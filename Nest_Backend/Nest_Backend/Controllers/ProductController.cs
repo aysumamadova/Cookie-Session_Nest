@@ -45,7 +45,28 @@ namespace Nest_Backend.Controllers
                                 .Include(p => p.ProductImgs)
                                 .Include(p => p.Categories));
         }
-
+        public IActionResult Cart()
+        {
+            List<BasketVM> basket = GetBasket();
+            List<BasketItemsVM> basketItems = new List<BasketItemsVM>();
+            foreach (var item in basket)
+            {
+                Product dbProduct = _context.Products.Include(p => p.ProductImgs).FirstOrDefault(P => P.Id == item.ProductId);
+                if (dbProduct == null) continue;
+                BasketItemsVM basketItem = new BasketItemsVM
+                {
+                    ProductId = dbProduct.Id,
+                    Image = dbProduct.ProductImgs.FirstOrDefault(pi => pi.IsFront).Image,
+                    Name = dbProduct.Name,
+                    Price = dbProduct.Price,
+                    Raiting = dbProduct.Raiting,
+                    IsActive = dbProduct.StockCount > 0 ? true : false,
+                    Count = item.Count
+                };
+                basketItems.Add(basketItem);
+            }
+            return View(basketItems);
+        }
         public IActionResult Basket()
         {
             List<BasketVM> product= JsonConvert.DeserializeObject<List<BasketVM>>(Request.Cookies["Basket"]);
@@ -62,14 +83,18 @@ namespace Nest_Backend.Controllers
             return RedirectToAction(nameof(Index));
            
         }
-
-        private void UpdateBasket(int id)
+        private List<BasketVM> GetBasket()
         {
             List<BasketVM> basketItems = new List<BasketVM>();
             if (Request.Cookies["Basket"] != null)
             {
                 basketItems = JsonConvert.DeserializeObject<List<BasketVM>>(Request.Cookies["Basket"]);
             }
+            return basketItems;
+        }
+        private void UpdateBasket(int id)
+        {
+            List<BasketVM> basketItems = GetBasket();
             BasketVM basketItem = basketItems.Find(bi => bi.ProductId == id);
             if (basketItem != null)
             {
